@@ -84,8 +84,8 @@ export default function PlayGame() {
             // Initialize ArgentTMA only on the client side
             const tma = ArgentTMA.init({
                 environment: "sepolia",
-                appName: "zkUNO",
-                appTelegramUrl: "https://t.me/zkUNOTestBot/zkUNO",
+                appName: "uno",
+                appTelegramUrl: "https://t.me/unoTestBot/uno",
                 sessionParams: {
                     allowedMethods: [
                         // List of contracts/methods allowed to be called by the session key
