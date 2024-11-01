@@ -5,29 +5,72 @@ import { useRef, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation';
 import TokenInfoBar from '@/components/TokenBar'
 import { UnoGameContract } from '@/lib/types';
-import { getContract, getContractNew } from '@/lib/web3';
+import { getContractNew } from '@/lib/web3';
 import io, { Socket } from "socket.io-client";
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { useAccount } from 'wagmi';
-import { usePrivy } from '@privy-io/react-auth';
-import { useWriteContract } from 'wagmi';
-import UNOContractJson from '@/constants/UnoGame.json'
 import { useLaunchParams } from '@telegram-apps/sdk-react';
+import { ArgentTMA, SessionAccountInterface } from "@argent/tma-wallet";
 
 const CONNECTION = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'https://unosocket-6k6gsdlfoa-el.a.run.app/';
 
+const argentTMA = ArgentTMA.init({
+    environment: "sepolia", // "sepolia" | "mainnet" (not supperted yet)
+    appName: "zkUNO", // Your Telegram app name
+    appTelegramUrl: "https://t.me/zkUNOTestBot/zkUNO", // Your Telegram app URL
+    sessionParams: {
+        allowedMethods: [
+            // List of contracts/methods allowed to be called by the session key
+            {
+                contract:
+                    "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                selector: "createGame",
+            },
+            {
+                contract:
+                    "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                selector: "endGame",
+            },
+            {
+                contract:
+                    "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                selector: "startGame",
+            },
+            {
+                contract:
+                    "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                selector: "joinGame",
+            },
+            {
+                contract:
+                    "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                selector: "getActiveGames",
+            },
+            {
+                contract:
+                    "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                selector: "getGameState",
+            },
+            {
+                contract:
+                    "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                selector: "submitAction",
+            }
+        ],
+        validityDays: 90 // session validity (in days) - default: 90
+    },
+});
+
 export default function PlayGame() {
 
-    const { address, status } = useAccount()
-    const { ready, user, authenticated, login, connectWallet, logout, linkWallet } = usePrivy();
     const [open, setOpen] = useState(false)
     const [createLoading, setCreateLoading] = useState(false)
     const [joinLoading, setJoinLoading] = useState(false)
-    const [account, setAccount] = useState<string | null>(null)
+    const [userAccount, setUserAccount] = useState<SessionAccountInterface | undefined>();
     const [contract, setContract] = useState<UnoGameContract | null>(null)
     const [games, setGames] = useState<BigInt[]>([])
     const router = useRouter()
     const lp = useLaunchParams();
+    const [isConnected, setIsConnected] = useState<boolean>(false);
 
     const socket = useRef<Socket | null>(null);
 
@@ -80,6 +123,51 @@ export default function PlayGame() {
         }
     }, [contract, socket])
 
+    useEffect(() => {
+        // Call connect() as soon as the app is loaded
+        argentTMA
+            .connect()
+            .then((res) => {
+                if (!res) {
+                    // Not connected
+                    setIsConnected(false);
+                    return;
+                }
+
+                if (userAccount && userAccount.getSessionStatus() !== "VALID") {
+                    // Session has expired or scope (allowed methods) has changed
+                    // A new connection request should be triggered
+
+                    // The account object is still available to get access to user's address
+                    // but transactions can't be executed
+                    const { account } = res;
+
+                    setUserAccount(account);
+                    setIsConnected(false);
+                    return;
+                }
+
+                // Connected
+                const { account, callbackData } = res;
+                // The session account is returned and can be used to submit transactions
+                setUserAccount(account);
+                setIsConnected(true);
+                // Custom data passed to the requestConnection() method is available here
+                console.log("callback data:", callbackData);
+            })
+            .catch((err) => {
+                console.error("Failed to connect", err);
+            });
+    }, []);
+
+    const handleConnectButton = async () => {
+        // If not connected, trigger a connection request
+        // It will open the wallet and ask the user to approve the connection
+        // The wallet will redirect back to the app and the account will be available
+        // from the connect() method -- see above
+        await argentTMA.requestConnection();
+    };
+
 
     const ISSERVER = typeof window === "undefined";
 
@@ -92,7 +180,7 @@ export default function PlayGame() {
             try {
                 setCreateLoading(true)
                 console.log('Creating game...')
-                const tx = await contract.createGame(account as `0x${string}` | undefined)
+                const tx = await contract.createGame(userAccount as `0x${string}` | undefined)
                 console.log('Transaction hash:', tx.hash)
                 await tx.wait()
                 console.log('Game created successfully')
@@ -116,7 +204,7 @@ export default function PlayGame() {
                 setJoinLoading(true)
                 console.log(`Joining game ${gameId.toString()}...`)
                 const gameIdBigint = BigInt(gameId.toString())
-                const tx = await contract.joinGame(gameIdBigint, account as `0x${string}` | undefined)
+                const tx = await contract.joinGame(gameIdBigint, userAccount as `0x${string}` | undefined)
                 console.log('Transaction hash:', tx.hash)
                 await tx.wait()
 
@@ -131,11 +219,10 @@ export default function PlayGame() {
     }
 
     const setup = async () => {
-        if (address) {
+        if (userAccount) {
             try {
                 const { contract } = await getContractNew()
                 setContract(contract)
-                setAccount(address)
             } catch (error) {
                 console.error('Failed to setup contract:', error)
             }
@@ -143,13 +230,14 @@ export default function PlayGame() {
     }
 
     useEffect(() => {
-        if (status === 'connected' && address) {
+        if (userAccount) {
             setup()
         } else {
-            setAccount(null)
             setContract(null)
         }
-    }, [status, address, authenticated])
+    }, [userAccount])
+
+    console.log(userAccount)
 
     return (
         <div className='relative'>
@@ -161,11 +249,11 @@ export default function PlayGame() {
                 </div>
                 <div className='absolute top-0 md:left-1/2 md:right-0 bottom-0 w-[calc(100%-2rem)] md:w-auto md:pr-20 py-12'>
                     <div className='text-[#ffffff] font-bold text-4xl text-shadow-md mb-2'>Hello {lp.initData?.user?.firstName ?? "User"},</div>
-                    {!address ?
+                    {!userAccount ?
                         <div className='relative text-center flex justify-center'>
                             <img src='/login-button-bg.png' />
                             <div className='left-1/2 -translate-x-1/2 absolute bottom-4'>
-                                <StyledButton disabled={!ready} data-testid="connect" roundedStyle='rounded-full' className='bg-[#ff9000] text-2xl' onClick={login}>{authenticated ? `Connected Wallet` : `Connect Wallet`}</StyledButton>
+                                <StyledButton data-testid="connect" roundedStyle='rounded-full' className='bg-[#ff9000] text-2xl' onClick={handleConnectButton}>{userAccount ? `Connected Wallet` : `Connect Wallet`}</StyledButton>
                             </div>
                         </div>
                         : <>
