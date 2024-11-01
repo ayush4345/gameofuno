@@ -5,13 +5,11 @@ import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { config } from "../lib/wagmi";
 import { PrivyProvider } from '@privy-io/react-auth';
 import { WagmiProvider } from '@privy-io/wagmi';
-import { init } from '@telegram-apps/sdk-react';
+import { TelegramProvider } from './telegramProvider';
 
 const queryClient = new QueryClient();
 
 export function Providers({ children }) {
-
-  init();
 
   return (
     <PrivyProvider
@@ -31,7 +29,9 @@ export function Providers({ children }) {
     >
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={config}>
-          {children}
+          <TelegramProvider>
+            {children}
+          </TelegramProvider>
         </WagmiProvider>
       </QueryClientProvider>
     </PrivyProvider>

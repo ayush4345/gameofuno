@@ -25,6 +25,7 @@
     "clsx": "^2.1.1",
     "crypto-js": "^4.2.0",
     "dotenv": "^16.4.5",
+    "eruda": "^3.4.0",
     "ethers": "^6.13.2",
     "fetch-retry": "^6.0.0",
     "file-loader": "^6.2.0",

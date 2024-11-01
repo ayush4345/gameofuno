@@ -13,56 +13,8 @@ import { ArgentTMA, SessionAccountInterface } from "@argent/tma-wallet";
 
 const CONNECTION = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'https://unosocket-6k6gsdlfoa-el.a.run.app/';
 
-const argentTMA = ArgentTMA.init({
-    environment: "sepolia", // "sepolia" | "mainnet" (not supperted yet)
-    appName: "zkUNO", // Your Telegram app name
-    appTelegramUrl: "https://t.me/zkUNOTestBot/zkUNO", // Your Telegram app URL
-    sessionParams: {
-        allowedMethods: [
-            // List of contracts/methods allowed to be called by the session key
-            {
-                contract:
-                    "0xd22DbC2094e07230E781B9914D409C69B0389cef",
-                selector: "createGame",
-            },
-            {
-                contract:
-                    "0xd22DbC2094e07230E781B9914D409C69B0389cef",
-                selector: "endGame",
-            },
-            {
-                contract:
-                    "0xd22DbC2094e07230E781B9914D409C69B0389cef",
-                selector: "startGame",
-            },
-            {
-                contract:
-                    "0xd22DbC2094e07230E781B9914D409C69B0389cef",
-                selector: "joinGame",
-            },
-            {
-                contract:
-                    "0xd22DbC2094e07230E781B9914D409C69B0389cef",
-                selector: "getActiveGames",
-            },
-            {
-                contract:
-                    "0xd22DbC2094e07230E781B9914D409C69B0389cef",
-                selector: "getGameState",
-            },
-            {
-                contract:
-                    "0xd22DbC2094e07230E781B9914D409C69B0389cef",
-                selector: "submitAction",
-            }
-        ],
-        validityDays: 90 // session validity (in days) - default: 90
-    },
-});
-
 export default function PlayGame() {
 
-    const [open, setOpen] = useState(false)
     const [createLoading, setCreateLoading] = useState(false)
     const [joinLoading, setJoinLoading] = useState(false)
     const [userAccount, setUserAccount] = useState<SessionAccountInterface | undefined>();
@@ -71,6 +23,7 @@ export default function PlayGame() {
     const router = useRouter()
     const lp = useLaunchParams();
     const [isConnected, setIsConnected] = useState<boolean>(false);
+    const [argentTMA, setArgentTMA] = useState<ArgentTMA | null>(null);
 
     const socket = useRef<Socket | null>(null);
 
@@ -124,6 +77,65 @@ export default function PlayGame() {
     }, [contract, socket])
 
     useEffect(() => {
+        const initArgentTma = async () => {
+
+            const { ArgentTMA } = await import('@argent/tma-wallet')
+
+            // Initialize ArgentTMA only on the client side
+            const tma = ArgentTMA.init({
+                environment: "sepolia",
+                appName: "zkUNO",
+                appTelegramUrl: "https://t.me/zkUNOTestBot/zkUNO",
+                sessionParams: {
+                    allowedMethods: [
+                        // List of contracts/methods allowed to be called by the session key
+                        {
+                            contract:
+                                "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                            selector: "createGame",
+                        },
+                        {
+                            contract:
+                                "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                            selector: "endGame",
+                        },
+                        {
+                            contract:
+                                "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                            selector: "startGame",
+                        },
+                        {
+                            contract:
+                                "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                            selector: "joinGame",
+                        },
+                        {
+                            contract:
+                                "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                            selector: "getActiveGames",
+                        },
+                        {
+                            contract:
+                                "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                            selector: "getGameState",
+                        },
+                        {
+                            contract:
+                                "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                            selector: "submitAction",
+                        }
+                    ],
+                    validityDays: 90 // session validity (in days) - default: 90
+                },
+            });
+            setArgentTMA(tma);
+        }
+
+        initArgentTma()
+    }, []);
+
+    useEffect(() => {
+        if (!argentTMA) return;
         // Call connect() as soon as the app is loaded
         argentTMA
             .connect()
@@ -158,22 +170,16 @@ export default function PlayGame() {
             .catch((err) => {
                 console.error("Failed to connect", err);
             });
-    }, []);
+    }, [argentTMA, userAccount]);
 
     const handleConnectButton = async () => {
+        if (!argentTMA) return;
         // If not connected, trigger a connection request
         // It will open the wallet and ask the user to approve the connection
         // The wallet will redirect back to the app and the account will be available
         // from the connect() method -- see above
         await argentTMA.requestConnection();
     };
-
-
-    const ISSERVER = typeof window === "undefined";
-
-    const openHandler = () => {
-        setOpen(false)
-    }
 
     const createGame = async () => {
         if (contract) {
