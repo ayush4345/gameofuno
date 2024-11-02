@@ -9,7 +9,7 @@ contract UnoGame is ReentrancyGuard {
 
     struct Game {
         uint256 id;
-        address[] players;
+        bytes32[] players;
         bool isActive;
         uint256 currentPlayerIndex;
         bytes32 stateHash;
@@ -20,7 +20,7 @@ contract UnoGame is ReentrancyGuard {
     }
 
     struct Action {
-        address player;
+        bytes32 player;
         bytes32 actionHash;
         uint256 timestamp;
     }
@@ -28,13 +28,13 @@ contract UnoGame is ReentrancyGuard {
     mapping(uint256 => Game) public games;
     mapping(uint256 => Action[]) public gameActions;
 
-    event GameCreated(uint256 indexed gameId, address creator);
-    event PlayerJoined(uint256 indexed gameId, address player);
+    event GameCreated(uint256 indexed gameId, bytes32 creator);
+    event PlayerJoined(uint256 indexed gameId, bytes32 player);
     event GameStarted(uint256 indexed gameId, bytes32 initialStateHash);
-    event ActionSubmitted(uint256 indexed gameId, address player, bytes32 actionHash);
+    event ActionSubmitted(uint256 indexed gameId, bytes32 player, bytes32 actionHash);
     event GameEnded(uint256 indexed gameId);
 
-    function createGame(address _creator) external nonReentrant returns (uint256) {
+    function createGame(bytes32 _creator) external nonReentrant returns (uint256) {
         _gameIdCounter++;
         uint256 newGameId = _gameIdCounter;
 
@@ -43,7 +43,7 @@ contract UnoGame is ReentrancyGuard {
 
         games[newGameId] = Game({
             id: newGameId,
-            players: new address[](0),
+            players: new bytes32[](0),
             isActive: true,
             currentPlayerIndex: 0,
             stateHash: initialStateHash,
@@ -69,7 +69,7 @@ contract UnoGame is ReentrancyGuard {
         emit GameStarted(gameId, initialStateHash);
     }
 
-    function joinGame(uint256 gameId, address _joinee) external nonReentrant {
+    function joinGame(uint256 gameId, bytes32 _joinee) external nonReentrant {
         require(games[gameId].isActive, "Game is not active");
         require(games[gameId].players.length < 10, "Game is full");
 
@@ -93,7 +93,7 @@ contract UnoGame is ReentrancyGuard {
         ));
     }
 
-    function submitAction(uint256 gameId, bytes32 actionHash, address _actor) external nonReentrant {
+    function submitAction(uint256 gameId, bytes32 actionHash, bytes32 _actor) external nonReentrant {
         Game storage game = games[gameId];
         require(game.isActive, "Game is not active");
         require(isPlayerTurn(gameId, _actor), "Not your turn");
@@ -119,11 +119,11 @@ contract UnoGame is ReentrancyGuard {
         game.stateHash = hashState(game);
     }
 
-    function isPlayerTurn(uint256 gameId, address player) public view returns (bool) {
+    function isPlayerTurn(uint256 gameId, bytes32 player) public view returns (bool) {
         return games[gameId].players[games[gameId].currentPlayerIndex] == player;
     }
 
-    function endGame(uint256 gameId, address _actor) external {
+    function endGame(uint256 gameId, bytes32 _actor) external {
         Game storage game = games[gameId];
         require(game.isActive, "Game is not active");
         require(isPlayerTurn(gameId, _actor), "Not your turn");
@@ -144,7 +144,7 @@ contract UnoGame is ReentrancyGuard {
     }
 
     function getGameState(uint256 gameId) external view returns (
-        address[] memory players,
+        bytes32[] memory players,
         bool isActive,
         uint256 currentPlayerIndex,
         bytes32 stateHash,

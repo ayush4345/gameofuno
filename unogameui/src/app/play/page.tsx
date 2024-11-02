@@ -154,7 +154,7 @@ export default function PlayGame() {
                     // but transactions can't be executed
                     const { account } = res;
 
-                    setUserAccount(account);
+                    setUserAccount(account.address);
                     setIsConnected(false);
                     return;
                 }
@@ -162,7 +162,7 @@ export default function PlayGame() {
                 // Connected
                 const { account, callbackData } = res;
                 // The session account is returned and can be used to submit transactions
-                setUserAccount(account);
+                setUserAccount(account.address);
                 setIsConnected(true);
                 // Custom data passed to the requestConnection() method is available here
                 console.log("callback data:", callbackData);
