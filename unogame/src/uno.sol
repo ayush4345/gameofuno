@@ -178,4 +178,25 @@ contract UnoGame is ReentrancyGuard {
     function getActiveGames() external view returns (uint256[] memory) {
         return _activeGames;
     }
+
+    function getNotStartedGames() external view returns (uint256[] memory) {
+        uint256[] memory notStartedGames = new uint256[](_activeGames.length);
+        uint256 count = 0;
+
+        for (uint256 i = 0; i < _activeGames.length; i++) {
+            uint256 gameId = _activeGames[i];
+            if (!games[gameId].isStarted && games[gameId].players.length < 3) {
+                notStartedGames[count] = gameId;
+                count++;
+            }
+        }
+
+        // Resize the array to fit the actual number of not started games
+        uint256[] memory result = new uint256[](count);
+        for (uint256 j = 0; j < count; j++) {
+            result[j] = notStartedGames[j];
+        }
+
+        return result;
+    }
 }
