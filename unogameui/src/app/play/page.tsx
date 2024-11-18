@@ -10,8 +10,9 @@ import io, { Socket } from "socket.io-client";
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useLaunchParams } from '@telegram-apps/sdk-react';
 import { ArgentTMA, SessionAccountInterface } from "@argent/tma-wallet";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-const CONNECTION = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'https://unosocket-6k6gsdlfoa-el.a.run.app/';
+const CONNECTION = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'https://tonunosocket-6k6gsdlfoa-el.a.run.app/';
 
 export default function PlayGame() {
 
@@ -31,7 +32,7 @@ export default function PlayGame() {
         if (contract) {
             try {
                 console.log('Fetching active games...')
-                const activeGames = await contract.getActiveGames()
+                const activeGames = await contract.getNotStartedGames()
                 console.log('Active games:', activeGames)
                 setGames(activeGames)
             } catch (error) {
@@ -91,37 +92,42 @@ export default function PlayGame() {
                         // List of contracts/methods allowed to be called by the session key
                         {
                             contract:
-                                "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                                "0x860b7345b2b4d3C5622aaaDec61f0E1b86F38bCf",
                             selector: "createGame",
                         },
                         {
                             contract:
-                                "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                                "0x860b7345b2b4d3C5622aaaDec61f0E1b86F38bCf",
                             selector: "endGame",
                         },
                         {
                             contract:
-                                "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                                "0x860b7345b2b4d3C5622aaaDec61f0E1b86F38bCf",
                             selector: "startGame",
                         },
                         {
                             contract:
-                                "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                                "0x860b7345b2b4d3C5622aaaDec61f0E1b86F38bCf",
                             selector: "joinGame",
                         },
                         {
                             contract:
-                                "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                                "0x860b7345b2b4d3C5622aaaDec61f0E1b86F38bCf",
                             selector: "getActiveGames",
                         },
                         {
                             contract:
-                                "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                                "0x860b7345b2b4d3C5622aaaDec61f0E1b86F38bCf",
+                            selector: "getNotStartedGames",
+                        },
+                        {
+                            contract:
+                                "0x860b7345b2b4d3C5622aaaDec61f0E1b86F38bCf",
                             selector: "getGameState",
                         },
                         {
                             contract:
-                                "0xd22DbC2094e07230E781B9914D409C69B0389cef",
+                                "0x860b7345b2b4d3C5622aaaDec61f0E1b86F38bCf",
                             selector: "submitAction",
                         }
                     ],
@@ -246,52 +252,52 @@ export default function PlayGame() {
     console.log(userAccount)
 
     return (
-        <div className='relative'>
-            <TokenInfoBar />
-            <div className='bg-white w-full max-w-[1280px] h-[720px] overflow-hidden mx-auto my-8 px-4 py-2 rounded-lg bg-cover bg-[url("/bg-2.jpg")] relative shadow-[0_0_20px_rgba(0,0,0,0.8)]'>
-                <div className='absolute inset-0 bg-no-repeat bg-[url("/table-1.png")]'></div>
-                <div className='absolute left-8 -right-8 top-14 -bottom-14 bg-no-repeat bg-[url("/dealer.png")] transform-gpu'>
-                    <div className='absolute -left-8 right-8 -top-14 bottom-14 bg-no-repeat bg-[url("/card-0.png")] animate-pulse'></div>
+        <div className='relative p-3 h-screen flex flex-col justify-between'>
+            <div>
+                <div className='bg-white relative rounded-2xl flex gap-5 p-3 items-center'>
+                    <span>
+                        <Avatar>
+                            <AvatarImage src={lp.initData?.user?.photoUrl} alt="@user" />
+                            <AvatarFallback>{lp.initData?.user?.firstName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                    </span>
+                    <span>
+                        <div className='font-bold'>{lp.initData?.user?.firstName}</div>
+                        <div className='font-light text-gray-500 text-sm'>Go to profile</div>
+                    </span>
+                    {/* <TonConnectButton className='absolute right-3' /> */}
                 </div>
-                <div className='absolute top-0 md:left-1/2 md:right-0 bottom-0 w-[calc(100%-2rem)] md:w-auto md:pr-20 py-12'>
-                    <div className='text-[#ffffff] font-bold text-4xl text-shadow-md mb-2'>Hello {lp.initData?.user?.firstName ?? "User"},</div>
-                    {!userAccount ?
-                        <div className='relative text-center flex justify-center'>
-                            <img src='/login-button-bg.png' />
-                            <div className='left-1/2 -translate-x-1/2 absolute bottom-4'>
-                                <StyledButton data-testid="connect" roundedStyle='rounded-full' className='bg-[#ff9000] text-2xl' onClick={handleConnectButton}>{userAccount ? `Connected Wallet` : `Connect Wallet`}</StyledButton>
-                            </div>
+                {!userAccount
+                    ? <div className='relative text-center flex justify-center'>
+                        <img src='/login-button-bg.png' />
+                        <div className='left-1/2 -translate-x-1/2 absolute bottom-4'>
+                            <StyledButton data-testid="connect" roundedStyle='rounded-full' className='bg-[#ff9000] text-2xl' onClick={handleConnectButton}>{userAccount ? `Connected Wallet` : `Connect Wallet`}</StyledButton>
                         </div>
-                        : <>
-                            <StyledButton onClick={() => createGame()} className='w-fit bg-[#00b69a] bottom-4 text-2xl my-3 mx-auto'>{createLoading == true ? 'Creating...' : 'Create Game Room'}</StyledButton>
-                            <p className='text-white text-sm font-mono'>Note: Don't join the room where game is already started</p>
-                            {joinLoading == true && <div className='text-white mt-2 text-2xl shadow-lg'>Wait, while we are joining your game room...</div>}
-                            <h2 className="text-2xl font-bold mb-4 text-white">Active Game Rooms:</h2>
-                            <ScrollArea className="h-[620px] rounded-md border border-gray-200 bg-white p-4">
-                                <ul className="space-y-2">
-                                    {games.toReversed().map(gameId => (
-                                        <li key={gameId.toString()} className="mb-2 bg-gray-100 p-4 rounded-lg shadow flex flex-row justify-between items-center">
-                                            <h2 className="text-xl font-semibold text-gray-800">Game {gameId.toString()}</h2>
-                                            <StyledButton onClick={() => joinGame(gameId)} className='w-fit bg-[#00b69a] bottom-4 text-2xl'>Join Game </StyledButton>
-                                        </li>
-                                    ))}
-                                </ul>
+                    </div>
+                    : <div>
+                        <div>
+                            <h2 className='mt-3 text-[#000022] font-bold text-3xl'>Games list</h2>
+                            <ScrollArea className='h-[calc(100vh-320px)] mt-3 rounded-2xl border-[1px] shadow-md border-[#000022] bg-white p-4'>
+                                {games.toReversed().map((gameId, index) => (
+                                    <div key={index} className='bg-[#000022]/10 rounded-2xl p-3 mt-3 flex gap-3 items-center justify-around hover:bg-[#000022]/20'>
+                                        <div>
+                                            <span className='font-bold'>Game{" "}</span>
+                                            <span className='font-bold'>{gameId.toString()}</span>
+                                        </div>
+                                        <StyledButton onClick={() => joinGame(gameId)} className='bg-[#FF7033] max-w-24'>Join</StyledButton>
+                                    </div>
+                                ))}
                             </ScrollArea>
-                        </>
-                    }
-                    {/* {"hello" &&
-                        <div className='flex flex-col items-center'>
-                            <StyledButton onClick={() => router.push("/create")} className='w-fit bg-[#00b69a] bottom-4 text-2xl mt-6'>Create Table </StyledButton>
-                            <StyledButton onClick={() => router.push("/game/join")} className='w-fit bg-[#00b69a] bottom-4 text-2xl mt-6'>Join Game </StyledButton>
-                            {loading &&
-                                <div className='text-white mt-2 text-2xl shadow-lg'>
-                                    Wait, while we are retriving your details...
-                                </div>
-                            }
                         </div>
-                    } */}
-                </div>
+                        <div className='flex mt-3'>
+                            <StyledButton onClick={() => createGame()} className='bg-[#FF7033] w-full'>{createLoading ? 'Creating...' : 'Create game'}</StyledButton>
+                        </div>
+                    </div>
+                }
             </div>
+            {/* <div className='w-full'>
+                <FooterNavigation />
+            </div> */}
         </div >
     )
 }
